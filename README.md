@@ -8,7 +8,9 @@ up key access.
 
 - **Slice 1 — iCal reader** ✅ — parse a feed and print upcoming reservations.
 - **Slice 2 — Supabase sync** ✅ — upsert reservations into a Postgres table, preserving human-entered guest names and status.
+- **Slice 3 — Dashboard** ✅ — Next.js + shadcn/ui app in `web/` with a live table (editable guest name + resort status) backed by Supabase.
 
+### Sync CLI (repo root)
 ```bash
 npm install
 cp .env.example .env      # then fill in SUPABASE_URL / SUPABASE_ANON_KEY (+ AIRBNB_ICAL_URL when you have it)
@@ -16,6 +18,14 @@ cp .env.example .env      # then fill in SUPABASE_URL / SUPABASE_ANON_KEY (+ AIR
 npm run read              # Slice 1: print upcoming reservations (no DB needed)
 npm run sync              # Slice 2: sync feed → Supabase (uses sample-calendar.ics by default)
 npm run sync -- "https://www.airbnb.com/calendar/ical/12345.ics?s=SECRET"   # real feed
+```
+
+### Dashboard (web/)
+```bash
+cd web
+npm install
+# web/.env.local holds NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY
+npm run dev               # http://localhost:3000
 ```
 
 ### Database
