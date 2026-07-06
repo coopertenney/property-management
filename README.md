@@ -8,7 +8,8 @@ up key access.
 
 - **Slice 1 — iCal reader** ✅ — parse a feed and print upcoming reservations.
 - **Slice 2 — Supabase sync** ✅ — upsert reservations into a Postgres table, preserving human-entered guest names and status.
-- **Slice 3 — Dashboard** ✅ — Next.js + shadcn/ui app in `web/` with a live table (editable guest name + resort status) backed by Supabase.
+- **Slice 3 — Dashboard** ✅ — Next.js + shadcn/ui app in `web/` (Everline lodge theme) with a live card list backed by Supabase.
+- **Slice 4 — Send to Everline** ✅ — per-reservation action that opens a pre-filled registration email (guest + dates for key access) and logs the handoff (`status`, `sent_to_resort_at`). Set `NEXT_PUBLIC_EVERLINE_EMAIL` in `web/.env.local` to pre-fill the recipient.
 
 ### Sync CLI (repo root)
 ```bash
@@ -48,6 +49,8 @@ calendar feed owns dates/code/phone; you own the guest name and the resort-hando
 > local time. Don't force UTC formatting — it rolls the day backward in +offset zones.
 
 ## Roadmap
-- **Slice 2** — Supabase project + `reservations` table; upsert parsed feed.
-- **Slice 3** — Next.js dashboard listing upcoming stays with an editable guest-name field.
-- **Slice 4** — "Send to Everline" → structured registration email + status logging.
+Slices 1–4 are done (see Status above). Next up:
+- **Real Airbnb access** — swap the sample feed for the live iCal URL (needs co-host access or your own listing). This is the real-world blocker, not code.
+- **Auto guest names** — parse Airbnb booking emails (or a PMS) so the guest name fills in automatically instead of by hand.
+- **Auth + RLS** — add login and Row Level Security before this leaves your machine.
+- **Scheduled sync** — run `npm run sync` on a schedule (Supabase pg_cron / a cron job) so the dashboard stays current.
