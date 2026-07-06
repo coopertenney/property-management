@@ -1,0 +1,17 @@
+{
+  "name": "property-management-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reads an Airbnb iCal feed and reports upcoming reservations to relay to Everline Resort.",
+  "scripts": {
+    "read": "tsx src/read.ts"
+  },
+  "dependencies": {
+    "node-ical": "^0.20.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

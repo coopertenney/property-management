@@ -1,0 +1,40 @@
+BEGIN:VCALENDAR
+PRODID:-//Airbnb Inc//Hosting Calendar 1.0.0//EN
+CALSCALE:GREGORIAN
+VERSION:2.0
+BEGIN:VEVENT
+DTEND;VALUE=DATE:20260628
+DTSTART;VALUE=DATE:20260625
+UID:aa11bb22cc33dd44-past@airbnb.com
+DESCRIPTION:Reservation URL: https://www.airbnb.com/hosting/reservations/details/HMPAST0001\nPhone Number (Last 4 Digits): 1122
+SUMMARY:Reserved
+END:VEVENT
+BEGIN:VEVENT
+DTEND;VALUE=DATE:20260709
+DTSTART;VALUE=DATE:20260704
+UID:bb22cc33dd44ee55-current@airbnb.com
+DESCRIPTION:Reservation URL: https://www.airbnb.com/hosting/reservations/details/HMCURR0002\nPhone Number (Last 4 Digits): 3344
+SUMMARY:Reserved
+END:VEVENT
+BEGIN:VEVENT
+DTEND;VALUE=DATE:20260714
+DTSTART;VALUE=DATE:20260712
+UID:cc33dd44ee55ff66-block@airbnb.com
+DESCRIPTION:Not available
+SUMMARY:Airbnb (Not available)
+END:VEVENT
+BEGIN:VEVENT
+DTEND;VALUE=DATE:20260720
+DTSTART;VALUE=DATE:20260716
+UID:dd44ee55ff66gg77-next@airbnb.com
+DESCRIPTION:Reservation URL: https://www.airbnb.com/hosting/reservations/details/HMNEXT0003\nPhone Number (Last 4 Digits): 5566
+SUMMARY:Reserved
+END:VEVENT
+BEGIN:VEVENT
+DTEND;VALUE=DATE:20260803
+DTSTART;VALUE=DATE:20260729
+UID:ee55ff66gg77hh88-aug@airbnb.com
+DESCRIPTION:Reservation URL: https://www.airbnb.com/hosting/reservations/details/HMAUGX0004\nPhone Number (Last 4 Digits): 7788
+SUMMARY:Reserved
+END:VEVENT
+END:VCALENDAR
