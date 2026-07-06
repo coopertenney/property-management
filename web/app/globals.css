@@ -35,6 +35,8 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -49,72 +51,79 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Everline Resort palette — warm mountain lodge:
+     evergreen pine, terracotta wood, amber glow, sand + stone. */
+  --background: #faf6ee; /* warm cream */
+  --foreground: #2b261f; /* warm near-black */
+  --card: #ffffff;
+  --card-foreground: #2b261f;
+  --popover: #ffffff;
+  --popover-foreground: #2b261f;
+  --primary: #35533f; /* evergreen */
+  --primary-foreground: #fbf9f3;
+  --secondary: #efe9dc; /* warm sand */
+  --secondary-foreground: #3a342a;
+  --muted: #f0eadd;
+  --muted-foreground: #7c7365; /* stone taupe */
+  --accent: #ede6d6;
+  --accent-foreground: #3a342a;
+  --destructive: #b23a2e; /* barn red */
+  --border: #e6ddca;
+  --input: #e6ddca;
+  --ring: #35533f;
+  --brand: #b4552d; /* terracotta / wood trim */
+  --brand-foreground: #fbf9f3;
+  --chart-1: #35533f;
+  --chart-2: #b4552d;
+  --chart-3: #c68a2e;
+  --chart-4: #7ba7c9;
+  --chart-5: #8a8377;
+  --radius: 0.875rem;
+  --sidebar: #f4efe4;
+  --sidebar-foreground: #2b261f;
+  --sidebar-primary: #35533f;
+  --sidebar-primary-foreground: #fbf9f3;
+  --sidebar-accent: #ede6d6;
+  --sidebar-accent-foreground: #3a342a;
+  --sidebar-border: #e6ddca;
+  --sidebar-ring: #35533f;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Warm dark lodge — dim cabin at night. */
+  --background: #22201b;
+  --foreground: #f2ede2;
+  --card: #2b2822;
+  --card-foreground: #f2ede2;
+  --popover: #2b2822;
+  --popover-foreground: #f2ede2;
+  --primary: #7fa98a; /* lifted evergreen for contrast */
+  --primary-foreground: #1c2a21;
+  --secondary: #35312a;
+  --secondary-foreground: #f2ede2;
+  --muted: #35312a;
+  --muted-foreground: #a79e8e;
+  --accent: #3d3830;
+  --accent-foreground: #f2ede2;
+  --destructive: #d9614f;
+  --border: #3d3830;
+  --input: #3d3830;
+  --ring: #7fa98a;
+  --brand: #d6764a; /* lifted terracotta */
+  --brand-foreground: #1c1a16;
+  --chart-1: #7fa98a;
+  --chart-2: #d6764a;
+  --chart-3: #d9a441;
+  --chart-4: #7ba7c9;
+  --chart-5: #a79e8e;
+  --sidebar: #2b2822;
+  --sidebar-foreground: #f2ede2;
+  --sidebar-primary: #7fa98a;
+  --sidebar-primary-foreground: #1c2a21;
+  --sidebar-accent: #3d3830;
+  --sidebar-accent-foreground: #f2ede2;
+  --sidebar-border: #3d3830;
+  --sidebar-ring: #7fa98a;
 }
 
 @layer base {
