@@ -14,7 +14,11 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { everlineMailto } from "@/lib/everlineEmail";
+
+const EVERLINE_EMAIL = process.env.NEXT_PUBLIC_EVERLINE_EMAIL ?? "";
 
 const STATUS: Record<
   ReservationStatus,
@@ -80,6 +84,25 @@ export function ReservationsDashboard() {
       .eq("code", code);
     if (error) toast.error(`Save failed: ${error.message}`);
     else toast.success("Saved");
+  }
+
+  function sendToEverline(r: Reservation) {
+    if (!r.guest_name?.trim()) {
+      toast.error("Add the guest name before sending to Everline.");
+      return;
+    }
+    // Open the user's mail client with the registration email pre-filled.
+    window.location.href = everlineMailto(r, EVERLINE_EMAIL);
+    // Log the handoff: mark sent + stamp the time.
+    patch(r.code, {
+      status: "sent_to_resort",
+      sent_to_resort_at: new Date().toISOString(),
+    });
+    toast.success(
+      EVERLINE_EMAIL
+        ? "Opening email to Everline — marked as sent."
+        : "Opening email (add the resort's address) — marked as sent.",
+    );
   }
 
   if (rows === null) {
@@ -178,7 +201,7 @@ export function ReservationsDashboard() {
             </div>
 
             {/* Status */}
-            <div className="sm:w-[210px] sm:shrink-0">
+            <div className="sm:w-[220px] sm:shrink-0">
               <label className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium">
                 <span
                   className="inline-block h-2 w-2 rounded-full"
@@ -205,6 +228,34 @@ export function ReservationsDashboard() {
                   ))}
                 </SelectContent>
               </Select>
+
+              {r.status === "new" ? (
+                <Button
+                  size="sm"
+                  className="mt-2 w-full"
+                  onClick={() => sendToEverline(r)}
+                >
+                  Send to Everline
+                </Button>
+              ) : (
+                <div className="text-muted-foreground mt-2 flex items-center justify-between gap-2 text-xs">
+                  <span>
+                    {r.sent_to_resort_at
+                      ? `Sent ${new Date(r.sent_to_resort_at).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}`
+                      : "Handed off"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => sendToEverline(r)}
+                    className="hover:text-brand underline underline-offset-2"
+                  >
+                    Resend
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         );

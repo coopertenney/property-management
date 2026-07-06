@@ -25,6 +25,7 @@ export interface Reservation {
   reservation_url: string | null;
   guest_name: string | null;
   status: ReservationStatus;
+  sent_to_resort_at: string | null;
   first_seen_at: string;
   updated_at: string;
 }

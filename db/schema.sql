@@ -22,6 +22,8 @@ create table if not exists reservations (
   guest_name      text,
   status          text not null default 'new'
                     check (status in ('new', 'sent_to_resort', 'confirmed')),
+  -- When the registration email was sent to the resort (set by the dashboard).
+  sent_to_resort_at timestamptz,
 
   -- Bookkeeping.
   first_seen_at   timestamptz not null default now(),
