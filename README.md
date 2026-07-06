@@ -4,17 +4,24 @@ Automates the coordination a property manager currently does: reads bookings fro
 Airbnb listing and relays guest + date info to **Everline Resort** so the hotel can set
 up key access.
 
-## Status — Slice 1: iCal reader ✅
+## Status
 
-Reads an Airbnb iCal feed and prints the upcoming reservations to register with the resort.
+- **Slice 1 — iCal reader** ✅ — parse a feed and print upcoming reservations.
+- **Slice 2 — Supabase sync** ✅ — upsert reservations into a Postgres table, preserving human-entered guest names and status.
 
 ```bash
 npm install
-npm run read                              # uses bundled sample-calendar.ics
-npm run read -- ./sample-calendar.ics     # explicit file
-npm run read -- "https://www.airbnb.com/calendar/ical/12345.ics?s=SECRET"   # real feed
-# or set AIRBNB_ICAL_URL in the environment
+cp .env.example .env      # then fill in SUPABASE_URL / SUPABASE_ANON_KEY (+ AIRBNB_ICAL_URL when you have it)
+
+npm run read              # Slice 1: print upcoming reservations (no DB needed)
+npm run sync              # Slice 2: sync feed → Supabase (uses sample-calendar.ics by default)
+npm run sync -- "https://www.airbnb.com/calendar/ical/12345.ics?s=SECRET"   # real feed
 ```
+
+### Database
+`db/schema.sql` defines the `reservations` table. Run it once in the Supabase SQL editor
+(or via the Management API). The sync **never overwrites** `guest_name` or `status` — the
+calendar feed owns dates/code/phone; you own the guest name and the resort-handoff status.
 
 ### What Airbnb's iCal feed gives us
 - ✅ Booked/blocked **dates**, **reservation code**, guest **phone last-4**, reservation URL
