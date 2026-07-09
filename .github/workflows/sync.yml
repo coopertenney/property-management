@@ -1,0 +1,31 @@
+name: Sync Airbnb → Supabase
+
+# Keeps Supabase current with the live Airbnb iCal feed on a schedule.
+# Runs ONLY the validated iCal sync. The Gmail auto-fill + Everline send are
+# deliberately NOT invoked here yet — they wait until the email parser is
+# validated against a real host booking email.
+#
+# Note: scheduled workflows run only from the default branch, and GitHub cron
+# can lag 5–30 min. A repo with no commits for 60 days auto-pauses schedules.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *" # every 30 minutes (UTC)
+  workflow_dispatch: {} # allow manual runs from the Actions tab / gh CLI
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Sync iCal feed into Supabase
+        run: npm run sync
+        env:
+          AIRBNB_ICAL_URL: ${{ secrets.AIRBNB_ICAL_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
