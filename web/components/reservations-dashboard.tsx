@@ -39,7 +39,16 @@ const STATUS: Record<
     dot: "#35533f",
     chip: "bg-[#e1ebe1] text-[#2f4a37] dark:bg-[#26362b] dark:text-[#9cc4a8]",
   },
+  cancelled: {
+    label: "Cancelled",
+    dot: "#b3261e",
+    chip: "bg-[#f6dedb] text-[#8c1d18] dark:bg-[#3a1f1d] dark:text-[#e79a94]",
+  },
 };
+
+// Statuses the user can set by hand. 'cancelled' is set only by the sync (when a
+// booking drops out of the Airbnb feed), so it's not offered in the dropdown.
+const MANUAL_STATUSES: ReservationStatus[] = ["new", "sent_to_resort", "confirmed"];
 
 function todayStr(): string {
   const d = new Date();
@@ -135,10 +144,13 @@ export function ReservationsDashboard() {
         const ci = parseDate(r.check_in);
         const co = parseDate(r.check_out);
         const s = STATUS[r.status];
+        const cancelled = r.status === "cancelled";
         return (
           <div
             key={r.code}
-            className="bg-card group flex flex-col gap-5 rounded-2xl border p-5 shadow-sm transition-shadow hover:shadow-md sm:flex-row sm:items-center"
+            className={`bg-card group flex flex-col gap-5 rounded-2xl border p-5 shadow-sm transition-shadow hover:shadow-md sm:flex-row sm:items-center ${
+              cancelled ? "border-[#b3261e]/40 ring-1 ring-[#b3261e]/20" : ""
+            }`}
           >
             {/* Date block */}
             <div className="flex items-center gap-4 sm:w-[290px] sm:shrink-0">
@@ -190,6 +202,10 @@ export function ReservationsDashboard() {
                 Guest name
               </label>
               <Input
+                // Remount when the persisted name changes (only on blur, after
+                // focus has left) so the uncontrolled default re-inits cleanly
+                // instead of Base UI warning about a changed defaultValue.
+                key={`name-${r.code}-${r.guest_name ?? ""}`}
                 className="bg-background"
                 defaultValue={r.guest_name ?? ""}
                 placeholder="Add guest name…"
@@ -212,12 +228,13 @@ export function ReservationsDashboard() {
               <Select
                 value={r.status}
                 onValueChange={(v) => patch(r.code, { status: v as ReservationStatus })}
+                disabled={cancelled}
               >
                 <SelectTrigger className={`w-full font-medium ${s.chip} border-transparent`}>
                   {s.label}
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(STATUS) as ReservationStatus[]).map((k) => (
+                  {MANUAL_STATUSES.map((k) => (
                     <SelectItem key={k} value={k}>
                       <span
                         className="mr-2 inline-block h-2 w-2 rounded-full align-middle"
@@ -226,10 +243,34 @@ export function ReservationsDashboard() {
                       {STATUS[k].label}
                     </SelectItem>
                   ))}
+                  {/* Sync-only status: kept as a disabled item so the controlled
+                      value always has a match, but the user can't pick it. */}
+                  {cancelled && (
+                    <SelectItem value="cancelled" disabled>
+                      <span
+                        className="mr-2 inline-block h-2 w-2 rounded-full align-middle"
+                        style={{ backgroundColor: STATUS.cancelled.dot }}
+                      />
+                      {STATUS.cancelled.label}
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
 
-              {r.status === "new" ? (
+              {cancelled ? (
+                <p className="mt-2 text-xs font-medium text-[#8c1d18] dark:text-[#e79a94]">
+                  ⚠ Cancelled
+                  {r.cancelled_at
+                    ? ` ${new Date(r.cancelled_at).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}`
+                    : ""}
+                  {r.sent_to_resort_at
+                    ? " — was sent to Everline. Ask the resort to revoke key access."
+                    : "."}
+                </p>
+              ) : r.status === "new" ? (
                 <Button
                   size="sm"
                   className="mt-2 w-full"

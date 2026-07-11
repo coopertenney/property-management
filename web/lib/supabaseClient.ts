@@ -13,7 +13,11 @@ export const supabase = createClient(url, key, {
   auth: { persistSession: false },
 });
 
-export type ReservationStatus = "new" | "sent_to_resort" | "confirmed";
+export type ReservationStatus =
+  | "new"
+  | "sent_to_resort"
+  | "confirmed"
+  | "cancelled";
 
 export interface Reservation {
   code: string;
@@ -26,6 +30,7 @@ export interface Reservation {
   guest_name: string | null;
   status: ReservationStatus;
   sent_to_resort_at: string | null;
+  cancelled_at: string | null;
   first_seen_at: string;
   updated_at: string;
 }

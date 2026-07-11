@@ -21,9 +21,12 @@ create table if not exists reservations (
   -- has no guest name, so you fill it in; status tracks the resort handoff.
   guest_name      text,
   status          text not null default 'new'
-                    check (status in ('new', 'sent_to_resort', 'confirmed')),
+                    check (status in ('new', 'sent_to_resort', 'confirmed', 'cancelled')),
   -- When the registration email was sent to the resort (set by the dashboard).
   sent_to_resort_at timestamptz,
+  -- Set by the sync when a booking disappears from the feed AFTER being sent to
+  -- the resort (i.e. a cancellation the resort still needs to hear about).
+  cancelled_at    timestamptz,
 
   -- Bookkeeping.
   first_seen_at   timestamptz not null default now(),

@@ -34,6 +34,18 @@ npm run dev               # http://localhost:3000
 (or via the Management API). The sync **never overwrites** `guest_name` or `status` — the
 calendar feed owns dates/code/phone; you own the guest name and the resort-handoff status.
 
+Existing projects must also apply **`db/002_add_cancelled_status.sql`** (adds the
+`cancelled` status + `cancelled_at`) before reconciliation can run; fresh installs get it
+from `schema.sql`.
+
+**Reconciliation:** beyond upserting, each sync reconciles current/future rows against the
+feed (past stays are left alone — they age out of the feed, they aren't cancellations):
+- a **block** or a still-`new` **booking** that dropped from the feed → deleted
+- a booking that dropped **after** being sent/confirmed → marked `cancelled` (kept visible
+  so you can have the resort revoke key access), `cancelled_at` stamped
+- a `cancelled` code that **reappears** (rebooking) → revived to `new`
+- an **empty feed** (likely a bad fetch) → sync skips upsert *and* reconciliation entirely
+
 ### What Airbnb's iCal feed gives us
 - ✅ Booked/blocked **dates**, **reservation code**, guest **phone last-4**, reservation URL
 - ❌ **No guest name** — that only comes from Airbnb booking emails or a PMS, and gets
@@ -50,7 +62,7 @@ calendar feed owns dates/code/phone; you own the guest name and the resort-hando
 
 ## Roadmap
 Slices 1–4 are done (see Status above). Next up:
-- **Real Airbnb access** — swap the sample feed for the live iCal URL (needs co-host access or your own listing). This is the real-world blocker, not code.
+- ✅ **Real Airbnb access** — DONE. Live iCal feed connected (a personal-account test listing); `AIRBNB_ICAL_URL` in `.env` points at it. Sync now reconciles the DB against the feed (see Database above).
 - **Auto guest names** — parse Airbnb booking emails (or a PMS) so the guest name fills in automatically instead of by hand.
 - **Auth + RLS** — add login and Row Level Security before this leaves your machine.
 - **Scheduled sync** — run `npm run sync` on a schedule (Supabase pg_cron / a cron job) so the dashboard stays current.

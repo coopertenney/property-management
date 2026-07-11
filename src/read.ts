@@ -1,5 +1,12 @@
 import { loadICal, parseAirbnbICal, upcomingReservations, type Reservation } from "./airbnb-ical.ts";
 
+// Load .env (Node 22 built-in) so AIRBNB_ICAL_URL is available without a CLI arg.
+try {
+  process.loadEnvFile();
+} catch {
+  // .env is optional — a CLI arg or existing env var still works.
+}
+
 /**
  * Slice 1: read an Airbnb iCal feed and print the upcoming reservations
  * you'd need to relay to Everline Resort for key access.
