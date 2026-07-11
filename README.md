@@ -65,4 +65,4 @@ Slices 1–4 are done (see Status above). Next up:
 - ✅ **Real Airbnb access** — DONE. Live iCal feed connected (a personal-account test listing); `AIRBNB_ICAL_URL` in `.env` points at it. Sync now reconciles the DB against the feed (see Database above).
 - **Auto guest names** — parse Airbnb booking emails (or a PMS) so the guest name fills in automatically instead of by hand.
 - **Auth + RLS** — add login and Row Level Security before this leaves your machine.
-- **Scheduled sync** — run `npm run sync` on a schedule (Supabase pg_cron / a cron job) so the dashboard stays current.
+- ✅ **Scheduled sync** — DONE. `npm run sync` runs on a GitHub Actions cron so the dashboard stays current.
