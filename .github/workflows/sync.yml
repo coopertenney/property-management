@@ -1,9 +1,11 @@
 name: Sync Airbnb → Supabase
 
-# Keeps Supabase current with the live Airbnb iCal feed on a schedule.
-# Runs ONLY the validated iCal sync. The Gmail auto-fill + Everline send are
-# deliberately NOT invoked here yet — they wait until the email parser is
-# validated against a real host booking email.
+# Keeps Supabase current with the live Airbnb iCal feed on a schedule, then
+# fills guest names from Gmail. The Gmail step is GATED on the GMAIL_REFRESH_TOKEN
+# secret: until the operator sets up OAuth (see README → Live Gmail ingestion)
+# AND validates the parser against a real booking email, the secret is unset and
+# the step is skipped — so the cron keeps doing exactly the validated iCal sync.
+# The Everline send stays manual (dashboard action), not automated here.
 #
 # Note: scheduled workflows run only from the default branch, and GitHub cron
 # can lag 5–30 min. A repo with no commits for 60 days auto-pauses schedules.
@@ -16,6 +18,10 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    # Job-level so the Gmail step's `if:` can test it (secrets aren't available
+    # in step `if` conditions directly).
+    env:
+      GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,3 +39,14 @@ jobs:
           # key only if the secret isn't set (won't write against RLS).
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      - name: Fill guest names from Gmail
+        # Skipped until OAuth is configured (README → Live Gmail ingestion).
+        if: env.GMAIL_REFRESH_TOKEN != ''
+        run: npm run names -- --gmail
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}

@@ -32,8 +32,21 @@ const CONFIRMATION_CODE_RE = /Confirmation code[\s:]+([A-Z0-9]{8,12})\b/i;
 // line above it can't be mistaken for the name.
 const GUEST_NAME_RE = /^([^\n]+?)\s+arrives\b/im;
 
-/** Strip RFC-822 headers: everything up to and including the first blank line. */
+// An RFC-822 header line, e.g. "Subject: ..." — a word, then ": ".
+const HEADER_LINE_RE = /^[A-Za-z][A-Za-z0-9-]*:\s/;
+
+/**
+ * Strip RFC-822 headers: everything up to and including the first blank line.
+ *
+ * BUT only when the text actually starts with headers (a raw .eml file). Live
+ * Gmail ingestion (src/gmail.ts) hands us an already-decoded message body with
+ * no headers — blindly splitting that on the first blank line would drop its
+ * opening paragraph, and with it the "<Name> arrives" line the name comes from.
+ * So we strip only when the first line looks like a header.
+ */
 function emailBody(rawEmail: string): string {
+  const firstLine = rawEmail.trimStart().split(/\r?\n/, 1)[0] ?? "";
+  if (!HEADER_LINE_RE.test(firstLine)) return rawEmail;
   const split = rawEmail.split(/\r?\n\r?\n/);
   // No blank line → treat the whole thing as body (e.g. a body-only paste).
   return split.length > 1 ? split.slice(1).join("\n\n") : rawEmail;

@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { parseAirbnbBookingEmail, type BookingEmail } from "./airbnb-email.ts";
+import { fetchAirbnbEmails } from "./gmail.ts";
 import { supabase } from "./supabase.ts";
 
 /**
@@ -12,24 +13,37 @@ import { supabase } from "./supabase.ts";
  * a manual correction you typed always wins over the email. The calendar sync
  * still never touches the field either (see src/sync.ts).
  *
- * Source resolution (first that's set wins):
- *   1. a path passed as the first CLI arg   →  npm run names -- <dir-or-file>
- *   2. the AIRBNB_EMAILS_DIR environment variable
- *   3. the bundled sample-emails/ directory
+ * Source resolution:
+ *   • `npm run names -- --gmail` (or EMAILS_SOURCE=gmail)  →  live Gmail
+ *     ingestion via OAuth (src/gmail.ts) — what the scheduled sync uses.
+ *   • otherwise a local path (first that's set wins):
+ *       1. a path passed as the first CLI arg  →  npm run names -- <dir-or-file>
+ *       2. the AIRBNB_EMAILS_DIR environment variable
+ *       3. the bundled sample-emails/ directory
  *
- * The source is a local directory of raw emails (one .eml per message, as a
- * Gmail/mail-client export produces) or a single email file. Wiring live Gmail
- * ingestion into the scheduled sync is a later step — this closes the parse +
- * fill half so the dashboard shows real names today.
+ * A local source is a directory of raw emails (one .eml per message) or a single
+ * email file. Gmail ingestion returns the same shape (readable message text), so
+ * everything below — parse, dedupe, fill-only upsert — is source-agnostic.
  */
 async function main() {
-  const source = process.argv[2] || process.env.AIRBNB_EMAILS_DIR?.trim() || "sample-emails";
-  const usingSample = source === "sample-emails";
-  console.log(`\n📨  Reading booking emails from: ${source}${usingSample ? "  (sample data)" : ""}\n`);
+  const useGmail = process.argv.includes("--gmail") || process.env.EMAILS_SOURCE === "gmail";
 
-  const rawEmails = await loadEmails(source);
+  let rawEmails: string[];
+  if (useGmail) {
+    console.log(`\n📨  Reading booking emails from: Gmail (live)\n`);
+    rawEmails = await fetchAirbnbEmails();
+  } else {
+    const source =
+      (process.argv[2] && !process.argv[2].startsWith("--") ? process.argv[2] : "") ||
+      process.env.AIRBNB_EMAILS_DIR?.trim() ||
+      "sample-emails";
+    const usingSample = source === "sample-emails";
+    console.log(`\n📨  Reading booking emails from: ${source}${usingSample ? "  (sample data)" : ""}\n`);
+    rawEmails = await loadEmails(source);
+  }
+
   if (rawEmails.length === 0) {
-    console.warn("⚠️  No email files found at that path — nothing to do.\n");
+    console.warn("⚠️  No emails found — nothing to do.\n");
     return;
   }
 
@@ -43,7 +57,18 @@ async function main() {
   const bookings = [...byCode.values()];
 
   if (bookings.length === 0) {
-    console.warn(`⚠️  Read ${rawEmails.length} email(s) but none looked like Airbnb reservation confirmations.\n`);
+    console.warn(`⚠️  Read ${rawEmails.length} email(s) but none looked like Airbnb reservation confirmations.`);
+    // Don't fail silently-green: if Gmail returned messages we couldn't parse,
+    // Airbnb's real layout likely differs from the regexes in airbnb-email.ts.
+    // Show the start of the first message so the patterns can be adjusted.
+    if (useGmail) {
+      console.warn(
+        `   → This is expected until the parser is checked against a REAL Airbnb email.\n` +
+          `     First message (first 600 chars) so you can adjust airbnb-email.ts:\n`,
+      );
+      console.warn(rawEmails[0].slice(0, 600));
+    }
+    console.warn();
     return;
   }
   console.log(`Parsed ${bookings.length} guest name(s) from ${rawEmails.length} email(s):`);
