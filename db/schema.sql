@@ -36,7 +36,7 @@ create table if not exists reservations (
 -- Handy for the dashboard: list upcoming stays soonest-first.
 create index if not exists reservations_check_in_idx on reservations (check_in);
 
--- NOTE ON SECURITY: Row Level Security is intentionally NOT enabled yet, so the
--- publishable/anon key can read+write during MVP development. Before this goes
--- anywhere real (and when we add dashboard auth in a later slice), we enable RLS
--- and add policies. Until then, keep the project private.
+-- SECURITY: Row Level Security is enabled by db/003_auth_rls.sql. Fresh installs
+-- should run schema.sql, then 002, then 003. After 003 the anon key can no longer
+-- read/write on its own — the dashboard requires login and the sync uses the
+-- service-role key. Sign-up must also be disabled (see 003 for why).

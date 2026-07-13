@@ -28,4 +28,8 @@ jobs:
         env:
           AIRBNB_ICAL_URL: ${{ secrets.AIRBNB_ICAL_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          # Service-role (secret) key: the sync writes server-side and must
+          # bypass RLS (enabled in db/003_auth_rls.sql). Falls back to the anon
+          # key only if the secret isn't set (won't write against RLS).
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}

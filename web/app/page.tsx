@@ -1,5 +1,7 @@
 import Image from "next/image";
 import { ReservationsDashboard } from "@/components/reservations-dashboard";
+import { AuthGate } from "@/components/auth-gate";
+import { SignOutButton } from "@/components/sign-out-button";
 
 function MountainMark() {
   return (
@@ -12,20 +14,24 @@ function MountainMark() {
 
 export default function Home() {
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <header className="bg-card/70 border-b backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-5xl items-center gap-2.5 px-6 py-4">
-          <MountainMark />
-          <span className="text-lg font-semibold tracking-tight">
-            Everline<span className="text-brand"> Ops</span>
-          </span>
-          <span className="text-muted-foreground ml-auto text-sm">
-            Property coordination
-          </span>
-        </div>
-      </header>
+    <AuthGate>
+      <div className="flex min-h-full flex-1 flex-col">
+        <header className="bg-card/70 border-b backdrop-blur-sm">
+          <div className="mx-auto flex w-full max-w-5xl items-center gap-2.5 px-6 py-4">
+            <MountainMark />
+            <span className="text-lg font-semibold tracking-tight">
+              Everline<span className="text-brand"> Ops</span>
+            </span>
+            <div className="ml-auto flex items-center gap-4">
+              <span className="text-muted-foreground hidden text-sm sm:inline">
+                Property coordination
+              </span>
+              <SignOutButton />
+            </div>
+          </div>
+        </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
+        <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
         {/* Hero */}
         <div className="relative mb-8 h-[240px] overflow-hidden rounded-2xl shadow-sm">
           <Image
@@ -52,7 +58,8 @@ export default function Home() {
         </div>
 
         <ReservationsDashboard />
-      </main>
-    </div>
+        </main>
+      </div>
+    </AuthGate>
   );
 }

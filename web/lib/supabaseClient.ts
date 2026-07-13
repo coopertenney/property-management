@@ -10,7 +10,15 @@ if (!url || !key) {
 }
 
 export const supabase = createClient(url, key, {
-  auth: { persistSession: false },
+  // The dashboard now requires login (Supabase Auth). Persist the session in
+  // the browser and keep the access token fresh so a logged-in operator stays
+  // signed in across reloads. RLS (db/003_auth_rls.sql) is the real guard —
+  // the anon key only works once a user has authenticated.
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
 });
 
 export type ReservationStatus =
