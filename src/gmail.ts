@@ -3,96 +3,45 @@
  *
  * Fetches Airbnb "Reservation confirmed" emails straight from the operator's
  * mailbox so the scheduled sync can fill guest names with no manual .eml export.
- * The parse + fill half is unchanged: this just produces the same `string[]` of
- * raw email text that src/names.ts' loadEmails() produces from a local folder,
- * then hands it to the existing parseAirbnbBookingEmail() (src/airbnb-email.ts).
+ * The parse + fill half is unchanged: this produces the same `string[]` of
+ * readable email text that src/names.ts' loadEmails() produces from a local
+ * folder, then hands it to parseAirbnbBookingEmail() (src/airbnb-email.ts).
  *
- * Auth: OAuth2 refresh token. This is the only headless option for a PERSONAL
- * Gmail account — a service account with domain-wide delegation is Workspace-
- * only. Set three env vars from a Google Cloud OAuth "Desktop app" client the
- * operator consents to once (scope https://www.googleapis.com/auth/gmail.readonly):
- *   GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN
+ * Auth: IMAP + a Gmail APP PASSWORD (not the account password). This reuses the
+ * credential the operator already provisions for mail access — no Google Cloud
+ * OAuth client, consent screen, or 7-day-token-expiry dance. Set:
+ *   GMAIL_USER            the mailbox address (e.g. coopertenney7@gmail.com)
+ *   GMAIL_APP_PASSWORD    a 16-char app password (Google Account → Security →
+ *                         2-Step Verification → App passwords). Spaces optional.
  * See README → "Live Gmail ingestion" for the one-time setup.
  *
- * Gotcha worth knowing: if the OAuth consent screen is left in "Testing"
- * publishing status, Google expires the refresh token after 7 days and this
- * dies weekly. Publish the app to "Production" (personal use can proceed past
- * the unverified-app warning) so the token is long-lived.
- *
- * Why format=full and not format=raw: real Airbnb emails are multipart HTML with
- * quoted-printable bodies. Gmail's API already decomposes the MIME tree and
- * transfer-decodes each part, so we pull the decoded text/plain part directly
- * (HTML-strip fallback) and hand the regex parser clean text — far more robust
- * than re-implementing a MIME parser over a raw dump. (loadEnvFile() is called
- * by whoever imports supabase.ts, so process.env is already populated here.)
+ * We search Gmail's "All Mail" (so archived confirmations are found too) with
+ * STANDARD IMAP search — sender + a date window. We deliberately do NOT use
+ * Gmail's X-GM-RAW extension: it silently returned zero results against this
+ * account, whereas plain IMAP SEARCH is reliable. We keep the sender filter
+ * broad ("airbnb") and let parseAirbnbBookingEmail() discard anything that
+ * isn't a reservation confirmation (account/login/ToS mail parses to null).
+ * Each match is MIME-parsed with mailparser so the regex parser sees clean text
+ * regardless of HTML/quoted-printable encoding.
+ * (loadEnvFile() is called by whoever imports supabase.ts, so process.env is
+ * already populated here.)
  */
 
-const TOKEN_URL = "https://oauth2.googleapis.com/token";
-const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
+import { ImapFlow } from "imapflow";
+import { simpleParser } from "mailparser";
 
-// Airbnb host reservation-confirmed emails, recent only. Fill-only writes +
+// Sender substring to match, and how far back to look. Fill-only writes +
 // code-keyed matching make re-ingesting the same message idempotent, so a
-// bounded lookback (NOT read-state tracking) is all we need. Override with
-// GMAIL_QUERY if Airbnb's sender/subject wording drifts.
-const DEFAULT_QUERY =
-  'from:airbnb.com subject:("reservation confirmed" OR "booking confirmed") newer_than:30d';
+// bounded lookback (NOT read-state tracking) is all we need.
+const DEFAULT_FROM = "airbnb";
+const DEFAULT_LOOKBACK_DAYS = 30;
 
-/** True when all three OAuth env vars are present. */
+/** True when both IMAP credentials are present. */
 export function gmailConfigured(): boolean {
-  return Boolean(
-    process.env.GMAIL_CLIENT_ID &&
-      process.env.GMAIL_CLIENT_SECRET &&
-      process.env.GMAIL_REFRESH_TOKEN,
-  );
+  return Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
 }
 
-/** Exchange the long-lived refresh token for a short-lived access token. */
-async function accessToken(): Promise<string> {
-  const res = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: process.env.GMAIL_CLIENT_ID!,
-      client_secret: process.env.GMAIL_CLIENT_SECRET!,
-      refresh_token: process.env.GMAIL_REFRESH_TOKEN!,
-      grant_type: "refresh_token",
-    }),
-  });
-  if (!res.ok) {
-    const detail = (await res.text()).slice(0, 300);
-    throw new Error(
-      `Gmail token refresh failed (${res.status}). If the token expired, re-consent — ` +
-        `a "Testing" OAuth app expires refresh tokens after 7 days; publish it to ` +
-        `Production. Detail: ${detail}`,
-    );
-  }
-  const json = (await res.json()) as { access_token?: string };
-  if (!json.access_token) throw new Error("Gmail token refresh returned no access_token.");
-  return json.access_token;
-}
-
-interface GmailPart {
-  mimeType?: string;
-  body?: { data?: string };
-  parts?: GmailPart[];
-}
-
-function decodeB64Url(data: string): string {
-  return Buffer.from(data, "base64url").toString("utf8");
-}
-
-/** Depth-first search for the first part of `mimeType` that carries body data. */
-function findPart(part: GmailPart | undefined, mimeType: string): string | null {
-  if (!part) return null;
-  if (part.mimeType === mimeType && part.body?.data) return decodeB64Url(part.body.data);
-  for (const child of part.parts ?? []) {
-    const found = findPart(child, mimeType);
-    if (found) return found;
-  }
-  return null;
-}
-
-/** Very small HTML→text fallback for HTML-only messages (no text/plain part). */
+/** Small HTML→text fallback for HTML-only messages (no text/plain part). */
 function stripHtml(html: string): string {
   return html
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -109,17 +58,6 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-/** Best-effort readable text for one message payload. */
-function messageText(payload: GmailPart): string {
-  const plain = findPart(payload, "text/plain");
-  if (plain) return plain;
-  const html = findPart(payload, "text/html");
-  if (html) return stripHtml(html);
-  // Single-part message: body sits directly on the payload.
-  if (payload.body?.data) return decodeB64Url(payload.body.data);
-  return "";
-}
-
 /**
  * Fetch recent Airbnb reservation-confirmed emails as readable text, ready to
  * feed straight into parseAirbnbBookingEmail(). Returns [] when nothing matches.
@@ -127,33 +65,57 @@ function messageText(payload: GmailPart): string {
 export async function fetchAirbnbEmails(): Promise<string[]> {
   if (!gmailConfigured()) {
     throw new Error(
-      "Gmail not configured. Set GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET / " +
-        "GMAIL_REFRESH_TOKEN (see README → Live Gmail ingestion).",
+      "Gmail not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD (see README → " +
+        "Live Gmail ingestion).",
     );
   }
-  const token = await accessToken();
-  const headers = { authorization: `Bearer ${token}` };
-  const query = process.env.GMAIL_QUERY?.trim() || DEFAULT_QUERY;
 
-  const listRes = await fetch(
-    `${GMAIL_API}/messages?maxResults=50&q=${encodeURIComponent(query)}`,
-    { headers },
-  );
-  if (!listRes.ok) {
+  const client = new ImapFlow({
+    host: "imap.gmail.com",
+    port: 993,
+    secure: true,
+    auth: {
+      user: process.env.GMAIL_USER!,
+      // App passwords are displayed as "abcd efgh ijkl mnop"; accept that form.
+      pass: process.env.GMAIL_APP_PASSWORD!.replace(/\s+/g, ""),
+    },
+    logger: false,
+  });
+
+  try {
+    await client.connect();
+  } catch (err) {
     throw new Error(
-      `Gmail messages.list failed (${listRes.status}): ${(await listRes.text()).slice(0, 300)}`,
+      `Gmail IMAP login failed: ${(err as Error).message}. Check GMAIL_USER / ` +
+        `GMAIL_APP_PASSWORD — the app password needs 2-Step Verification enabled and ` +
+        `IMAP turned on (Gmail → Settings → Forwarding and POP/IMAP).`,
     );
   }
-  const list = (await listRes.json()) as { messages?: { id: string }[] };
-  const ids = (list.messages ?? []).map((m) => m.id);
 
-  const texts = await Promise.all(
-    ids.map(async (id) => {
-      const res = await fetch(`${GMAIL_API}/messages/${id}?format=full`, { headers });
-      if (!res.ok) return "";
-      const msg = (await res.json()) as { payload?: GmailPart };
-      return msg.payload ? messageText(msg.payload) : "";
-    }),
-  );
-  return texts.filter((t) => t.trim());
+  const from = process.env.GMAIL_FROM?.trim() || DEFAULT_FROM;
+  const lookbackDays = Number(process.env.GMAIL_LOOKBACK_DAYS) || DEFAULT_LOOKBACK_DAYS;
+  const since = new Date(Date.now() - lookbackDays * 86_400_000);
+
+  const texts: string[] = [];
+  try {
+    // "All Mail" so archived confirmations are searched too.
+    const lock = await client.getMailboxLock("[Gmail]/All Mail");
+    try {
+      const uids = await client.search({ from, since }, { uid: true });
+      if (uids && uids.length) {
+        for await (const msg of client.fetch(uids, { source: true }, { uid: true })) {
+          if (!msg.source) continue;
+          const parsed = await simpleParser(msg.source);
+          const text = parsed.text || (parsed.html ? stripHtml(parsed.html) : "");
+          if (text.trim()) texts.push(text);
+        }
+      }
+    } finally {
+      lock.release();
+    }
+  } finally {
+    await client.logout().catch(() => {});
+  }
+
+  return texts;
 }

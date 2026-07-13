@@ -24,6 +24,7 @@ npm run sync -- "https://www.airbnb.com/calendar/ical/12345.ics?s=SECRET"   # re
 npm run names             # Slice 5: fill guest_name from booking emails (uses sample-emails/ by default)
 npm run names -- ./my-airbnb-emails   # a folder of exported .eml files (or a single email file)
 npm run names -- --gmail  # live: pull booking emails straight from Gmail (see "Live Gmail ingestion")
+npm run names -- --gmail --dry-run   # same, but read + parse only — no database writes
 ```
 
 ### Dashboard (web/)
@@ -62,38 +63,36 @@ feed (past stays are left alone — they age out of the feed, they aren't cancel
   scheduled sync it reads Gmail directly — see **Live Gmail ingestion** below.
 
 ### Live Gmail ingestion
-`npm run names -- --gmail` pulls Airbnb "Reservation confirmed" emails straight from the
-operator's mailbox (`src/gmail.ts`) and runs them through the same parse + fill pipeline —
-no manual `.eml` export. The scheduled sync (`.github/workflows/sync.yml`) runs this step
-right after the iCal sync, **gated on the `GMAIL_REFRESH_TOKEN` secret** so it stays dormant
-until you complete the setup below.
+`npm run names -- --gmail` pulls recent Airbnb emails straight from the operator's mailbox
+(`src/gmail.ts`) over IMAP and runs them through the same parse + fill pipeline — no manual
+`.eml` export. The scheduled sync (`.github/workflows/sync.yml`) runs this step right after
+the iCal sync, **gated on the `GMAIL_APP_PASSWORD` secret** so it stays dormant until you
+complete the setup below.
 
-Auth is an **OAuth2 refresh token** — the only headless option for a *personal* Gmail
-account (a service account with domain-wide delegation is Google Workspace only). One-time
+Auth is a **Gmail app password** (the credential the operator already uses for mail access —
+no Google Cloud OAuth client, consent screen, or refresh-token expiry to manage). One-time
 setup:
 
-1. In [Google Cloud Console](https://console.cloud.google.com/) create (or pick) a project,
-   enable the **Gmail API**, and configure the **OAuth consent screen** (External, your own
-   account as a test user is fine). **Publish the app to "Production"** — while it's in
-   "Testing", Google expires the refresh token after **7 days** and the cron dies weekly.
-2. Create an **OAuth client ID** of type **Desktop app**. Note the client ID + secret.
-3. Do the one-time consent to mint a **refresh token** with scope
-   `https://www.googleapis.com/auth/gmail.readonly` (e.g. via the
-   [OAuth 2.0 Playground](https://developers.google.com/oauthplayground/): gear icon → "Use
-   your own OAuth credentials" → authorize the Gmail readonly scope → exchange for a refresh
-   token).
-4. Put the three values in `.env` locally (`GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`,
-   `GMAIL_REFRESH_TOKEN`) and as **repo secrets** for the Actions cron. Optionally set
-   `GMAIL_QUERY` to override the default search
-   (`from:airbnb.com subject:("reservation confirmed" OR "booking confirmed") newer_than:30d`).
+1. On the mailbox's Google Account, enable **2-Step Verification**, then create an
+   **App password** (Security → 2-Step Verification → App passwords). It's 16 characters.
+2. In Gmail → Settings → **Forwarding and POP/IMAP**, make sure **IMAP is enabled**.
+3. Put `GMAIL_USER` (the address) and `GMAIL_APP_PASSWORD` in `.env` locally and as **repo
+   secrets** for the Actions cron. Optional overrides: `GMAIL_FROM` (sender substring to
+   match, default `airbnb`) and `GMAIL_LOOKBACK_DAYS` (default `30`).
 
-> ⚠️ **Validate against a real email first.** The parser's regexes
-> (`src/airbnb-email.ts`) were derived from sample fixtures, not a real Airbnb host email —
-> real ones are multipart HTML, which `gmail.ts` extracts to text before parsing. Run
-> `npm run names -- --gmail` once by hand and confirm names fill. If a message is fetched
-> but not parsed, the command prints the start of it so you can adjust the regexes — that's
-> the single place to fix wording. Re-ingestion is idempotent (fill-only, code-keyed), so
-> running it repeatedly is safe.
+The search uses **standard IMAP** (`FROM airbnb` within the lookback window) over Gmail's
+"All Mail", deliberately *not* Gmail's `X-GM-RAW` extension — that returned zero results in
+testing. The sender filter is kept broad and `parseAirbnbBookingEmail()` discards anything
+that isn't a reservation confirmation (login codes, ToS, listing-verification mail all parse
+to null). Re-ingestion is idempotent (fill-only, code-keyed), so running it repeatedly is safe.
+
+> ⚠️ **The parser is not yet validated against a real *reservation* email.** Transport, MIME
+> extraction, and non-match rejection are proven against real Airbnb mail, but the guest-name
+> / confirmation-code regexes (`src/airbnb-email.ts`) were derived from the `sample-emails/`
+> fixtures — the test mailbox has no real booking confirmation to check them against yet. When
+> the first real booking lands, run `npm run names -- --gmail --dry-run`: if a message is
+> fetched but not parsed, the command prints the start of it so you can adjust the regexes
+> (that's the single place to fix wording). `--dry-run` reads + parses but writes nothing.
 
 ## Files
 - `src/airbnb-ical.ts` — reusable parser (`parseAirbnbICal`, `upcomingReservations`,
@@ -111,7 +110,7 @@ setup:
 ## Roadmap
 Slices 1–5 are done (see Status above). Next up:
 - ✅ **Real Airbnb access** — DONE. Live iCal feed connected (a personal-account test listing); `AIRBNB_ICAL_URL` in `.env` points at it. Sync now reconciles the DB against the feed (see Database above).
-- ✅ **Auto guest names** — DONE. `npm run names` parses Airbnb "Reservation confirmed" emails and fills `guest_name`, matched on confirmation code (fill-only). Live Gmail ingestion (`--gmail`) is wired into the scheduled sync, gated on OAuth creds (see **Live Gmail ingestion**); one manual validation against a real Airbnb email closes it out.
+- ✅ **Auto guest names** — DONE. `npm run names` parses Airbnb "Reservation confirmed" emails and fills `guest_name`, matched on confirmation code (fill-only). Live Gmail ingestion (`--gmail`, IMAP app password) is wired into the scheduled sync, gated on the `GMAIL_APP_PASSWORD` secret (see **Live Gmail ingestion**); one validation against a real *reservation* email closes it out.
 - 🚧 **Auth + RLS** — login + Row Level Security. Dashboard now requires a Supabase
   Auth login (`web/components/auth-gate.tsx`); `db/003_auth_rls.sql` enables RLS so the
   anon key can't read/write on its own. The server-side sync uses the **service-role**

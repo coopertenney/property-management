@@ -27,6 +27,8 @@ import { supabase } from "./supabase.ts";
  */
 async function main() {
   const useGmail = process.argv.includes("--gmail") || process.env.EMAILS_SOURCE === "gmail";
+  const dryRun = process.argv.includes("--dry-run");
+  if (dryRun) console.log("🧪  DRY RUN — reading + parsing only, no database writes.");
 
   let rawEmails: string[];
   if (useGmail) {
@@ -108,6 +110,11 @@ async function main() {
       kept.push(b.code);
       continue;
     }
+    if (dryRun) {
+      filled.push(b.code);
+      console.log(`🧪  ${b.code}  ←  ${b.guestName}   (would fill)`);
+      continue;
+    }
     const { error: upErr } = await supabase
       .from("reservations")
       .update({ guest_name: b.guestName, updated_at: now })
@@ -122,7 +129,8 @@ async function main() {
   }
 
   console.log();
-  if (filled.length) console.log(`Filled ${filled.length} guest name(s): ${filled.join(", ")}`);
+  if (filled.length)
+    console.log(`${dryRun ? "Would fill" : "Filled"} ${filled.length} guest name(s): ${filled.join(", ")}`);
   if (kept.length) console.log(`Kept ${kept.length} existing name(s) (not overwritten): ${kept.join(", ")}`);
   if (unmatched.length) {
     console.log(
