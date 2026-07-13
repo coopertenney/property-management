@@ -6,7 +6,8 @@
   "description": "Reads an Airbnb iCal feed and reports upcoming reservations to relay to Everline Resort.",
   "scripts": {
     "read": "tsx src/read.ts",
-    "sync": "tsx src/sync.ts"
+    "sync": "tsx src/sync.ts",
+    "names": "tsx src/names.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",

@@ -5,8 +5,9 @@ import { supabase } from "./supabase.ts";
  * Slice 2: read an Airbnb iCal feed and upsert reservations into Supabase.
  *
  * Key rule: the calendar feed owns dates/code/phone, but NOT guest_name or status.
- * Those are human-owned, so we omit them from the upsert payload — new rows get
- * their column defaults, existing rows keep whatever you typed.
+ * Those aren't in the feed, so we omit them from the upsert payload — new rows get
+ * their column defaults, existing rows keep whatever's there. guest_name is filled
+ * separately from Airbnb booking emails (see src/names.ts); status is human-owned.
  *
  * Source: CLI arg → AIRBNB_ICAL_URL env → bundled sample-calendar.ics.
  */
@@ -37,7 +38,7 @@ async function main() {
     phone_last4: r.phoneLast4 ?? null,
     reservation_url: r.reservationUrl ?? null,
     updated_at: new Date().toISOString(),
-    // guest_name and status are deliberately omitted — see note above.
+    // guest_name (filled from emails, see src/names.ts) and status are omitted — see note above.
   }));
 
   const { data, error } = await supabase
